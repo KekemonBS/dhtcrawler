@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+
+  dhtcrawler:
+    container_name: dhtcrwl
+    build:
+      context: .
+      dockerfile: ./cmd/dhtcrwl/Dockerfile
+    ports:
+      - 8080:8080
+    networks:
+      - shared-network
+    depends_on:  
+      - db
+
+  db:
+    image: postgres
+    container_name: postgres
+    restart: always
+    volumes:
+      - "data:/var/lib/postgresql/data"
+    ports:
+      - 5432:5432
+    networks:
+      - shared-network
+    environment:
+      DB_HOST: postgresql
+      POSTGRES_PASSWORD: test
+      POSTGRES_USER: test
+      POSTGRES_DB: sharesDB
+
+volumes:
+  data:
+
+networks:
+  shared-network:
+    driver: bridge

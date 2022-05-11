@@ -1,0 +1,4 @@
+*.swp
+TMP/
+mocks/
+vendor/
