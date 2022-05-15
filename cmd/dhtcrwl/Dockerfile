@@ -1,6 +1,6 @@
 FROM golang
 ENV POSTGRESURI="postgresql://test:test@db:5432/sharesDB?sslmode=disable"
-ENV THREADS="5"
+ENV THREADS="4"
 WORKDIR /opt
 COPY . .
 #RUN go mod tidy
