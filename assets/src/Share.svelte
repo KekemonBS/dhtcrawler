@@ -1,9 +1,9 @@
 <script>
     export let no;
-    export let name;
-	export let size;
-	export let fileTree;
-	export let magnetLink;
+    export let Name;
+	export let Size;
+	export let FileTree;
+	export let MagnetLink;
 </script>
 
 <style>
@@ -14,6 +14,7 @@
     }
 
     table {
+        min-width: 100%;
         background-color: #eeeeee;
         border: 2px solid;
         border-collapse: collapse;
@@ -29,6 +30,13 @@
         text-align: center;
         background-color: #dedede;
     }
+
+    #filetree {
+        white-space: pre;
+        max-height: 300px; 
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
 </style>
 
 <div>
@@ -36,20 +44,24 @@
         <thead>
             <tr>
                 <th style="width: 3%">{no}</th>
-                <th title={name}>{name}</th>
-                <th style="width: 3%">{size}</th>
+                <th title={Name}>{Name}</th>
+                <th style="width: 3%">{Size}</th>
             </tr>
         </thead>
         <tbody>
             <tr>
-                <td colspan="3" id="#tree">{fileTree}</td>
+                <td colspan="3" id="#tree">
+                    <div id=filetree>
+                        {FileTree}
+                    </div>
+                </td>
             </tr>
             <tr>
                 <td style="width: 3%;text-align:center;"> 
                     <i class="fa fa-solid fa-magnet"></i>
                 </td>
                 <td colspan="3">
-                    <a href={magnetLink} target="_blank">{magnetLink}</a>
+                    <a href={MagnetLink} target="_blank">{MagnetLink}</a>
                 </td>
             </tr>
         </tbody>

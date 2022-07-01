@@ -18,8 +18,8 @@
     } else {
         init = false;
     }
-    $: pages = genPageslist(pn);
-    function genPageslist(pn) {
+    $: pages = genPageslist(pn, resultsFound, limit);
+    function genPageslist(pn, resultsFound, limit) {
         let pagesQuantity = Math.ceil(resultsFound/limit);
         let res = [];
         res.length = 0;
@@ -39,24 +39,35 @@
         pn = p;
     }
     function submitQuery(e) {
-        searchQuery = e.target[0].value;
+        if (e.target[0].value != "") {
+            searchQuery = e.target[0].value;
+            pn = 1;
+        } else {
+            searchQuery = e.target[0].value;
+            resultsPresent = false;
+        }
     }
     async function displayPage(query, q, pn) {
+        if (query.trim() == "") 
+            return;
         let reqString = `http://${APILocation}/api/v1/dhtcrawler/displaypage?size=${limit}&n=${pn}&query=${query}`
         let response = await fetch(reqString);
         console.log(`reqString : ${reqString}`);
         console.log(`code : ${response.status}`);
         if (response.ok) {
-            resultsPresent = true;
             let respObj = await response.json();
-            resultsFound = parseInt(respObj.total, 10);
-            searchResult =  respObj.results;
+            resultsFound = parseInt(respObj.Total, 10);
+            searchResult =  respObj.Results;
+            if (searchResult != "") {
+                resultsPresent = true;
+            } else {
+                alert("Nothing found.");
+            }
         } else {
             alert("HTTP Err : " + response.status);
         }
     }
 </script>
-
 
 <style>
     @font-face {
@@ -136,9 +147,9 @@
         
     <fieldset>
         <legend>Limit</legend>
-        <label><input type="radio" name="radio" on:click={() => {limit = 10; pn = 1;}} checked> 10 </label>
-        <label><input type="radio" name="radio" on:click={() => {limit = 20; pn = 1;}}> 20 </label>
-        <label><input type="radio" name="radio" on:click={() => {limit = 50; pn = 1;}}> 50 </label>
+        <label><input type="radio" name="radio" on:click={() => {limit = 10;}} checked> 10 </label>
+        <label><input type="radio" name="radio" on:click={() => {limit = 20;}}> 20 </label>
+        <label><input type="radio" name="radio" on:click={() => {limit = 50;}}> 50 </label>
     </fieldset>
     
     <div id="info">
@@ -169,7 +180,7 @@
                     <button on:click={changePage(page)} class="highlighted">{page}</button>
                 {/if}
             {/each}
-            {#if genPageslist(pn).length > 3}
+            {#if genPageslist(pn, resultsFound, limit).length > 3}
                 <button on:click={nextPage}>&gt;</button>
             {/if}
         </div>

@@ -2,3 +2,5 @@
 TMP/
 mocks/
 vendor/
+storage/csvimport/rutracker/ 
+storage/csvimport/mine/ 

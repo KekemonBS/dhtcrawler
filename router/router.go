@@ -4,9 +4,9 @@ import (
 	"net/http"
 )
 
-type rateParserImpl interface {
+type crawlerHandlersImpl interface {
 	Start(w http.ResponseWriter, r *http.Request)
-	Status(w http.ResponseWriter, r *http.Request)
+	//Status(w http.ResponseWriter, r *http.Request)
 	Stop(w http.ResponseWriter, r *http.Request)
 	SharesByID(w http.ResponseWriter, r *http.Request)
 	SharesAll(w http.ResponseWriter, r *http.Request)
@@ -15,11 +15,11 @@ type rateParserImpl interface {
 }
 
 //New returns router
-func New(imp rateParserImpl) *http.ServeMux {
+func New(imp crawlerHandlersImpl) *http.ServeMux {
 	//API
 	mux := http.NewServeMux()
 	mux.HandleFunc("/dhtcrawler/start", imp.Start)
-	mux.HandleFunc("/dhtcrawler/status", imp.Status)
+	//mux.HandleFunc("/dhtcrawler/status", imp.Status)
 	mux.HandleFunc("/dhtcrawler/stop", imp.Stop)
 
 	mux.HandleFunc("/dhtcrawler/display", imp.SharesByID)

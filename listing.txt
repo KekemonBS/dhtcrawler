@@ -1,0 +1,1204 @@
+::::::::::::::
+assets/src/App.svelte
+::::::::::::::
+<script>
+    import "node_modules/json2/lib/JSON2/static/json2.js";
+    import "./css/fontawesome.css";
+    import Share from './Share.svelte';
+    let name = 'DHT crawler';
+
+    let init = true;
+    let resultsPresent = false;
+    let pn = 1;
+    let limit = 10;
+    let resultsFound = 0;
+    let APILocation = window.location.host;
+    let searchQuery = "";
+    let searchResult = [];
+    
+    $: if (!init) { 
+        displayPage(searchQuery, limit, pn);
+    } else {
+        init = false;
+    }
+    $: pages = genPageslist(pn, resultsFound, limit);
+    function genPageslist(pn, resultsFound, limit) {
+        let pagesQuantity = Math.ceil(resultsFound/limit);
+        let res = [];
+        res.length = 0;
+        if (pn < 3) {
+            res = [1,2,3,4,5];
+        } else {
+            res = [pn-2, pn-1, pn, pn+1, pn+2];
+        }
+        while(res[res.length-1] > pagesQuantity) {
+            res.pop();
+        } 
+        return res;
+    }
+    function nextPage() {pn++;}
+    function previousPage() {if (pn > 1) pn--;}
+    function changePage(p) {
+        pn = p;
+    }
+    function submitQuery(e) {
+        if (e.target[0].value != "") {
+            searchQuery = e.target[0].value;
+            pn = 1;
+        } else {
+            searchQuery = e.target[0].value;
+            resultsPresent = false;
+        }
+    }
+    async function displayPage(query, q, pn) {
+        if (query.trim() == "") 
+            return;
+        let reqString = `http://${APILocation}/api/v1/dhtcrawler/displaypage?size=${limit}&n=${pn}&query=${query}`
+        let response = await fetch(reqString);
+        console.log(`reqString : ${reqString}`);
+        console.log(`code : ${response.status}`);
+        if (response.ok) {
+            let respObj = await response.json();
+            resultsFound = parseInt(respObj.Total, 10);
+            searchResult =  respObj.Results;
+            if (searchResult != "") {
+                resultsPresent = true;
+            } else {
+                alert("Nothing found.");
+            }
+        } else {
+            alert("HTTP Err : " + response.status);
+        }
+    }
+</script>
+
+<style>
+    @font-face {
+        font-family: "Font Awesome 6 Free";
+        src: url("/webfonts/fa-solid-900.woff2") format("woff2");
+    }
+
+    :global(body) {
+        padding: 0;
+        font-family: Verdana, Arial, Helvetica, sans-serif;
+        overflow: auto;
+    }       
+            
+    #main {
+        background-color: #f5ef9b;
+        border-left: solid;
+        border-right: solid;
+
+        display: block;
+        margin: auto;
+
+        padding: 1pt;
+        min-height: 100%;
+    }       
+    
+    @media screen and (min-width: 800px) {            
+        #main {
+            width: 60%;
+        }
+    }
+    
+    #main > * {
+        margin: 1%; 
+        display: block;
+    }
+
+    button,h1,fieldset,form,#nav {
+        text-align: center;
+        color: black;
+    }
+
+    fieldset>label,h5 {
+        display: inline-block;
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+    
+    form>#searchbar {
+        width: 50%; 
+        height: 37px;
+    }
+
+    form>#searchbutton {
+        height: 37px;
+    }
+
+    #nav>button {
+        margin: 2pt;
+    }
+
+    .highlighted {
+        background-color: #dbdbda;
+    }
+</style>
+
+<svelte:head>
+    <title>{name}</title>
+</svelte:head>
+<div id="main">
+    <h1>{name}</h1>
+    <form on:submit|preventDefault={submitQuery} autocomplete="on" accept-charset="utf-8">
+        <input type="text" id="searchbar" value=""/>
+        <button id="searchbutton"> 
+            <i class="fa fa-solid fa-magnifying-glass"></i>
+        </button>
+    </form>
+        
+    <fieldset>
+        <legend>Limit</legend>
+        <label><input type="radio" name="radio" on:click={() => {limit = 10;}} checked> 10 </label>
+        <label><input type="radio" name="radio" on:click={() => {limit = 20;}}> 20 </label>
+        <label><input type="radio" name="radio" on:click={() => {limit = 50;}}> 50 </label>
+    </fieldset>
+    
+    <div id="info">
+        {#if resultsPresent}
+            <h5>Page: {pn}</h5>
+            <h5>-</h5>
+            <h5>Found in total: {resultsFound}</h5>
+        {/if}
+    </div>
+    
+    <hr>
+    <div id="results">
+        {#if resultsPresent}
+            {#each searchResult as d, i}
+                <Share no={i+1} {...d} />
+            {/each}
+        {/if}
+    </div>
+    <hr>
+    
+    {#if resultsPresent}
+        <div id="nav">            
+            <button on:click={previousPage}>&lt;</button>
+            {#each pages as page}
+                {#if page != pn}
+                    <button on:click={changePage(page)}>{page}</button>
+                {:else}
+                    <button on:click={changePage(page)} class="highlighted">{page}</button>
+                {/if}
+            {/each}
+            {#if genPageslist(pn, resultsFound, limit).length > 3}
+                <button on:click={nextPage}>&gt;</button>
+            {/if}
+        </div>
+    {/if}
+</div>
+::::::::::::::
+assets/src/Share.svelte
+::::::::::::::
+<script>
+    export let no;
+    export let Name;
+	export let Size;
+	export let FileTree;
+	export let MagnetLink;
+</script>
+
+<style>
+    div {
+        max-width: 100%;
+        overflow-x: auto;
+        margin-bottom: 1%;
+    }
+
+    table {
+        min-width: 100%;
+        background-color: #eeeeee;
+        border: 2px solid;
+        border-collapse: collapse;
+    }
+
+    tr,th,td {
+        border: 1px solid;
+        border-collapse: collapse;
+        padding: 3pt;
+    }
+
+    th {
+        text-align: center;
+        background-color: #dedede;
+    }
+
+    #filetree {
+        white-space: pre;
+        max-height: 300px; 
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+</style>
+
+<div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 3%">{no}</th>
+                <th title={Name}>{Name}</th>
+                <th style="width: 3%">{Size}</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="3" id="#tree">
+                    <div id=filetree>
+                        {FileTree}
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 3%;text-align:center;"> 
+                    <i class="fa fa-solid fa-magnet"></i>
+                </td>
+                <td colspan="3">
+                    <a href={MagnetLink} target="_blank">{MagnetLink}</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+::::::::::::::
+cmd/dhtcrwl/Dockerfile
+::::::::::::::
+FROM golang:1.18.2-alpine
+ENV POSTGRESURI="postgresql://test:test@db:5432/sharesDB?sslmode=disable"
+ENV IMPORTCSV="YES"
+WORKDIR /opt
+RUN apk add gcc libc-dev libpcap-dev
+COPY . .
+#RUN go mod tidy
+RUN go build -mod vendor ./cmd/dhtcrwl/...
+EXPOSE 8080
+EXPOSE 1337
+CMD ["./dhtcrwl"]
+::::::::::::::
+cmd/dhtcrwl/main.go
+::::::::::::::
+package main
+
+import (
+	"context"
+	"database/sql"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+
+	"github.com/KekemonBS/dhtcrawler/crawler"
+	"github.com/KekemonBS/dhtcrawler/infrastructure/env"
+	"github.com/KekemonBS/dhtcrawler/router"
+	"github.com/KekemonBS/dhtcrawler/storage/postgresql"
+)
+
+func main() {
+	//Init config
+	cfg, err := env.NewConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
+	//Init logger
+	logger := log.New(os.Stdout, "log:", log.Lshortfile)
+
+	var dbImpl crawler.DbImpl
+	//Open connection
+	db, err := sql.Open("postgres", cfg.PostgresURI)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	defer db.Close()
+	logger.Println("Postgres URI : ", cfg.PostgresURI)
+	err = db.Ping()
+	if err != nil {
+		logger.Fatal(err)
+	}
+	//Migrate
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		logger.Fatal(err)
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://./storage/migrations",
+		"postgres", driver)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	m.Up()
+	//Init db client
+	dbImpl = postgresql.New(db)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	//Init handlers
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, os.Interrupt)
+		logger.Printf("got signal: %v", <-ch)
+		cancel()
+	}()
+	handlers, err := crawler.New(ctx, logger, dbImpl, cfg)
+	if err != nil {
+		logger.Fatal(err)
+	}
+
+	router := router.New(handlers)
+	s := &http.Server{
+		Addr:           ":8080",
+		Handler:        router,
+		ReadTimeout:    10 * time.Second,
+		WriteTimeout:   10 * time.Second,
+		MaxHeaderBytes: 1 << 20,
+	}
+	go func() {
+		err = s.ListenAndServe()
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			s.Close()
+			return
+		}
+	}
+}
+::::::::::::::
+crawler/crawlerHandlers.go
+::::::::::::::
+package crawler
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
+	"github.com/KekemonBS/dhtcrawler/crawler/models"
+	"github.com/KekemonBS/dhtcrawler/infrastructure/env"
+	"github.com/KekemonBS/dhtcrawler/storage/csvimport"
+
+	"github.com/google/uuid"
+)
+
+////go:generate cp -r ../assets/public/ served/
+//var (
+//	//go:embed served
+//	frontend embed.FS
+//	pages    = map[string]string{
+//		"/": "served/public/index.html",
+//	}
+//)
+
+//DHTCrawlerHandlers struct that holds general info needed to crawl DHT
+type DHTCrawlerHandlers struct {
+	ctx    context.Context
+	logger *log.Logger
+	dbImpl DbImpl
+	cfg    *env.Config
+}
+
+//DbImpl interface describes needed database operations
+type DbImpl interface {
+	Create(ctx context.Context, rate models.Share) error
+	DeleteByID(ctx context.Context, id string) error
+	ReadByID(ctx context.Context, id string) (models.Share, error)
+	ReadAll(ctx context.Context) ([]models.Share, error)
+	ReadPage(ctx context.Context, size, n int, queryShares string) (models.SharesPage, error)
+}
+
+//New returs crawler instance
+func New(ctx context.Context, logger *log.Logger, dbImpl DbImpl, cfg *env.Config) (*DHTCrawlerHandlers, error) {
+	return &DHTCrawlerHandlers{
+		ctx:    ctx,
+		logger: logger,
+		dbImpl: dbImpl,
+		cfg:    cfg,
+	}, nil
+}
+
+//Start starts crawler
+func (dc *DHTCrawlerHandlers) Start(w http.ResponseWriter, r *http.Request) {
+	sesChan := make(chan struct{})
+
+	dhtcses, err := NewCrawler(dc.ctx, dc.dbImpl, dc.logger)
+	if err != nil {
+		dc.logger.Fatal(err)
+	}
+	go dhtcses.Crawl(sesChan)
+
+	<-sesChan
+	if dc.cfg.ImportCSV {
+		err := csvimport.ImportCSV("./storage/csvimport/mine", dhtcses)
+		if err != nil {
+			dc.logger.Fatal(err)
+		}
+	}
+}
+
+//Stop stops crawler
+func (dc *DHTCrawlerHandlers) Stop(w http.ResponseWriter, r *http.Request) {
+	n, err := w.Write([]byte("stop\n"))
+	if err != nil || n == 0 {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+//SharesByID calls to db and writes specific share of shares table
+func (dc *DHTCrawlerHandlers) SharesByID(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	id, ok := query["id"]
+	if !ok {
+		dc.logger.Print("wrong query param")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	uuidString, err := uuid.Parse(id[0])
+	if err != nil {
+		dc.logger.Fatal(err)
+	}
+	rate, err := dc.dbImpl.ReadByID(dc.ctx, uuidString.String())
+	if err != nil {
+		dc.logger.Fatal(err)
+	}
+	_, err = w.Write([]byte(fmt.Sprint(rate) + "\n"))
+	if err != nil {
+		dc.logger.Fatal(err)
+	}
+}
+
+//SharesAll calls to db and writes all shares of shares table
+func (dc *DHTCrawlerHandlers) SharesAll(w http.ResponseWriter, r *http.Request) {
+	rates, err := dc.dbImpl.ReadAll(dc.ctx)
+	if err != nil {
+		dc.logger.Fatal(err)
+	}
+	_, err = w.Write([]byte(fmt.Sprint(rates) + "\n"))
+	if err != nil {
+		dc.logger.Fatal(err)
+	}
+
+}
+
+//SharesPage calls to db and writes page of shares table
+func (dc *DHTCrawlerHandlers) SharesPage(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	size, ok := query["size"]
+	if !ok {
+		dc.logger.Print("wrong query param: size")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	pageNum, ok := query["n"]
+	if !ok {
+		dc.logger.Print("wrong query param: n")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	queryShares, ok := query["query"]
+	if !ok {
+		dc.logger.Print("wrong query param: query")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	sizeConv, err := strconv.ParseInt(size[0], 10, 32)
+	if err != nil {
+		dc.logger.Print("malformed query param: size")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	pageNumConv, err := strconv.ParseInt(pageNum[0], 10, 32)
+	if err != nil {
+		dc.logger.Print("malformed query param: n")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	sharesPage, err := dc.dbImpl.ReadPage(dc.ctx, int(sizeConv), int(pageNumConv), queryShares[0])
+	if err != nil {
+		dc.logger.Fatal(err)
+	}
+
+	res, err := json.Marshal(sharesPage)
+	_, err = w.Write(res)
+	if err != nil {
+		dc.logger.Fatal(err)
+	}
+}
+::::::::::::::
+crawler/crawlerUtils.go
+::::::::::::::
+package crawler
+
+import (
+	"context"
+	"encoding/hex"
+	"log"
+	"net"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/anacrolix/dht/v2"
+	"github.com/anacrolix/torrent/bencode"
+	"github.com/davecgh/go-spew/spew"
+
+	"github.com/cenkalti/rain/torrent"
+
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/pcap"
+
+	"github.com/KekemonBS/dhtcrawler/crawler/models"
+)
+
+//DHTCrawler struct holds data that needed in process of capturing info_hashes
+type DHTCrawler struct {
+	ctx              context.Context
+	logger           *log.Logger
+	startupWaitgroup sync.WaitGroup
+	SessionStorage   []string //will be modified by func that imports infohashes from csv
+	dbImpl           DbImpl
+}
+
+//NewCrawler creates instance of DHTCrawler
+//that will listen to DHT and process incoming get_peers queries
+func NewCrawler(ctx context.Context, db DbImpl, logger *log.Logger) (*DHTCrawler, error) {
+	return &DHTCrawler{
+		ctx:              ctx,
+		logger:           logger,
+		startupWaitgroup: sync.WaitGroup{},
+		SessionStorage:   make([]string, 10),
+		dbImpl:           db,
+	}, nil
+
+}
+
+//Crawl starts DHT node, captures get_peers queries
+//, tries to search captured info_hash
+func (dhtc *DHTCrawler) Crawl(sch chan struct{}) {
+
+	ip, ifs := dhtc.getIP()
+
+	dhtc.logger.Print(ip, " ", ifs)
+
+	sc := dhtc.genConfig(ip, ":1337")
+	ds, err := dht.NewServer(sc)
+	if err != nil {
+		dhtc.logger.Fatal(err)
+	}
+
+	go dhtc.readConn(ifs, ip)
+	go ds.TableMaintainer()
+
+	ticker := time.NewTicker(1 * time.Second)
+	errChan := make(chan error)
+
+	dhtc.startupWaitgroup.Add(1)
+	var ses *torrent.Session
+	go dhtc.createSession(&ses, ip, errChan)
+	dhtc.startupWaitgroup.Wait()
+
+	sch <- struct{}{}
+
+	//addIH("ec7a402ff515d80f30f6244847b672ae9fbe5d7a")
+	//addIH("74d89962b39acb3fc855d4b91c4eb234758a4ebc")
+
+	for {
+		select {
+		case <-dhtc.ctx.Done():
+			ds.Close()
+			return
+		case <-ticker.C:
+			sl := len(dhtc.SessionStorage)
+			var sfe string
+			if sl != 0 {
+				sfe = dhtc.SessionStorage[0]
+				//spew.Dump(dhtc.SessionStorage)
+				errchan := make(chan error, 0)
+
+				go dhtc.addURI(ses, sfe, 30*time.Second, errchan, 4)
+				dhtc.SessionStorage = dhtc.SessionStorage[1:]
+			}
+		case err = <-errChan:
+			dhtc.logger.Fatal(err)
+		}
+	}
+}
+
+func (dhtc *DHTCrawler) genConfig(ip, port string) *dht.ServerConfig {
+	sc := dht.NewDefaultServerConfig()
+	conn, err := net.ListenPacket("udp", ip+port)
+	if err != nil {
+		panic(err)
+	}
+	sc.Conn = conn
+	return sc
+}
+
+func (dhtc *DHTCrawler) getIP() (ip string, interfaceName string) {
+	//Find IP
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		dhtc.logger.Fatal(err)
+	}
+	defer conn.Close()
+	ipAddress := conn.LocalAddr().(*net.UDPAddr)
+	resIP := ipAddress.IP.String()
+
+	//Find interface
+	ifs, err := net.Interfaces()
+	var found net.Interface
+	for _, v := range ifs {
+		addrList, err := v.Addrs()
+		if err != nil {
+			dhtc.logger.Fatal(err)
+		}
+		for _, addr := range addrList {
+			if strings.Split(addr.String(), "/")[0] == resIP {
+				found = v
+			}
+		}
+	}
+	return resIP, found.Name
+}
+
+//Sniff right packets from interface
+func (dhtc *DHTCrawler) readConn(ifs string, ip string) {
+	//62144 default max packet size for tcpdump
+	handle, err := pcap.OpenLive(ifs, 62144, true, pcap.BlockForever)
+	if err != nil {
+		dhtc.logger.Fatal(err)
+	}
+	defer handle.Close()
+	pchan := gopacket.NewPacketSource(handle, handle.LinkType()).Packets()
+	for {
+		select {
+		case <-dhtc.ctx.Done():
+			handle.Close()
+			return
+		case packet := <-pchan:
+			//Process packet
+			var res interface{}
+			if packet.ErrorLayer() == nil &&
+				strings.Contains(string(packet.Data()), "get_peers") &&
+				packet.NetworkLayer().NetworkFlow().Src().String() != ip {
+
+				err = bencode.Unmarshal(packet.ApplicationLayer().LayerContents(), &res)
+				if err != nil {
+					dhtc.logger.Print(err)
+				}
+				if res != nil {
+					vala, ok := res.(map[string]interface{})["a"]
+					if !ok {
+						dhtc.logger.Print("malformed packet")
+					}
+					if valHash, ok := vala.(map[string]interface{})["info_hash"]; ok {
+						infoHash := valHash.(string)
+						infoHashString := hex.EncodeToString([]byte(infoHash))
+						if !dhtc.contains(dhtc.SessionStorage, infoHashString) {
+							dhtc.SessionStorage = append(dhtc.SessionStorage, infoHashString)
+							dhtc.logger.Println(infoHashString)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+//Taken from main.go of cenkalti/rain torrent client, modified
+func (dhtc *DHTCrawler) createSession(resSession **torrent.Session, ip string, ech chan error) {
+	cfg := torrent.DefaultConfig
+	cfg.DHTHost = ip
+	cfg.Database = "session.db"
+
+	rs, err := torrent.NewSession(cfg)
+	*resSession = rs
+
+	if err != nil {
+		ech <- err
+	}
+	defer rs.Close()
+	dhtc.startupWaitgroup.Done()
+	for {
+		select {
+		case s := <-dhtc.ctx.Done():
+			dhtc.logger.Printf("received %s, stopping server", s)
+			os.Remove(cfg.Database)
+			return
+		}
+	}
+}
+
+func (dhtc *DHTCrawler) addURI(ses *torrent.Session, ih string, timeout time.Duration, ech chan error, retries int) {
+	dhtc.logger.Print("looking up ----->", ih)
+	ticker := time.NewTicker(timeout)
+	opt := &torrent.AddTorrentOptions{
+		StopAfterMetadata: true,
+	}
+
+	arg := dhtc.genMagnetLink(ih)
+	t, err := ses.AddURI(arg, opt)
+	if err != nil {
+		ech <- err
+	}
+
+	metadataC := t.NotifyMetadata()
+
+	for {
+		select {
+		case <-dhtc.ctx.Done():
+			err = t.Stop()
+			if err != nil {
+				ech <- err
+			}
+			err := ses.RemoveTorrent(t.ID())
+			if err != nil {
+				ech <- err
+			}
+			return
+		case <-metadataC:
+			tbytes, _ := t.Torrent()
+			var decodedTorrentFile interface{}
+			bencode.Unmarshal(tbytes, &decodedTorrentFile)
+			dhtc.writeResult(decodedTorrentFile.(map[string]interface{}), arg)
+			err := ses.RemoveTorrent(t.ID())
+			if err != nil {
+				ech <- err
+			}
+			return
+		case <-ticker.C:
+			err := ses.RemoveTorrent(t.ID())
+			if err != nil {
+				ech <- err
+			}
+			dhtc.logger.Print("-----> metadata cannot be downloaded")
+
+			//Recursively call itself, retries += -1
+			if retries != 0 {
+				dhtc.addURI(ses, ih, timeout, ech, retries-1)
+			}
+			return
+		}
+	}
+}
+
+func (dhtc *DHTCrawler) genMagnetLink(ih string) string {
+	base := "magnet:?xt=urn:btih:"
+	tr1 := "&tr=udp://tracker.openbittorrent.com:80"
+	tr2 := "&tr=udp://tracker.opentrackr.org:1337/announce"
+	return base + ih + tr1 + tr2
+}
+
+func (dhtc *DHTCrawler) contains(s []string, v string) bool {
+	for _, vs := range s {
+		if v == vs {
+			return true
+		}
+	}
+	return false
+}
+
+//AddIH adds info_hash to session for further lookup
+func (dhtc *DHTCrawler) AddIH(ih string) {
+	dhtc.SessionStorage = append(dhtc.SessionStorage, ih)
+}
+
+func (dhtc *DHTCrawler) writeResult(m map[string]interface{}, magnet string) {
+	var res models.Share
+	res.Name = m["info"].(map[string]interface{})["name"].(string)
+	res.MagnetLink = magnet
+
+	res.Size = 0
+	res.FileTree = ""
+
+	if m["info"].(map[string]interface{})["files"] != nil {
+		files := m["info"].(map[string]interface{})["files"].([]interface{})
+		for _, v := range files {
+			res.Size += int(v.(map[string]interface{})["length"].(int64))
+
+			pathMap := v.(map[string]interface{})["path"].([]interface{})
+			path := "."
+			for _, pv := range pathMap {
+				path += "/" + pv.(string)
+			}
+			path += "\n"
+			res.FileTree += path
+		}
+	} else {
+		res.Size = int(m["info"].(map[string]interface{})["length"].(int64))
+		res.FileTree = "./" + res.Name
+	}
+
+	//Write to db
+	spew.Dump(res)
+	dhtc.dbImpl.Create(dhtc.ctx, res)
+}
+::::::::::::::
+crawler/models/bittorrent.go
+::::::::::::::
+package models
+
+//Share stores data detected bittorrent share
+type Share struct {
+	Name       string
+	Size       int
+	FileTree   string
+	MagnetLink string
+}
+
+//SharesPage stores resulting page of Shares
+type SharesPage struct {
+	Total   int
+	Results []Share
+}
+::::::::::::::
+docker-compose.yml
+::::::::::::::
+version: "3.8"
+
+services:
+
+  dhtcrawler:
+    container_name: dhtcrwl
+    build:
+      context: .
+      dockerfile: ./cmd/dhtcrwl/Dockerfile
+    ports:
+      - 8080:8080
+    networks:
+      - shared-network
+    depends_on:  
+      - db
+
+  db:
+    image: postgres
+    container_name: postgres
+    restart: always
+    volumes:
+      - "data:/var/lib/postgresql/data"
+    ports:
+      - 5432:5432
+    networks:
+      - shared-network
+    environment:
+      DB_HOST: postgresql
+      POSTGRES_PASSWORD: test
+      POSTGRES_USER: test
+      POSTGRES_DB: sharesDB
+
+volumes:
+  data:
+
+networks:
+  shared-network:
+    driver: bridge
+::::::::::::::
+infrastructure/env/config.go
+::::::::::::::
+package env
+
+import (
+	"fmt"
+	"os"
+)
+
+//Config struct holds data parsed from environment
+type Config struct {
+	//Add some field if i need to
+	PostgresURI string
+	ImportCSV   bool
+}
+
+//NewConfig parses env to struct
+func NewConfig() (*Config, error) {
+	// postgresql://[userspec@][hostspec][/dbname][?paramspec]
+	postgresURI, ok := os.LookupEnv("POSTGRESURI")
+	if !ok {
+		return nil, fmt.Errorf("no POSTGRESURI env variable")
+	}
+
+	//[YES/NO]
+	importCSVAns, ok := os.LookupEnv("IMPORTCSV")
+	if !ok {
+		return nil, fmt.Errorf("no IMPORTCSV env variable")
+	}
+	var importCSV bool
+	if importCSVAns == "YES" {
+		importCSV = true
+	} else {
+		importCSV = false
+	}
+
+	return &Config{
+		PostgresURI: postgresURI,
+		ImportCSV:   importCSV,
+	}, nil
+}
+::::::::::::::
+router/router.go
+::::::::::::::
+package router
+
+import (
+	"net/http"
+)
+
+type crawlerHandlersImpl interface {
+	Start(w http.ResponseWriter, r *http.Request)
+	//Status(w http.ResponseWriter, r *http.Request)
+	Stop(w http.ResponseWriter, r *http.Request)
+	SharesByID(w http.ResponseWriter, r *http.Request)
+	SharesAll(w http.ResponseWriter, r *http.Request)
+	SharesPage(w http.ResponseWriter, r *http.Request)
+	//	ServeFrontend(w http.ResponseWriter, r *http.Request)
+}
+
+//New returns router
+func New(imp crawlerHandlersImpl) *http.ServeMux {
+	//API
+	mux := http.NewServeMux()
+	mux.HandleFunc("/dhtcrawler/start", imp.Start)
+	//mux.HandleFunc("/dhtcrawler/status", imp.Status)
+	mux.HandleFunc("/dhtcrawler/stop", imp.Stop)
+
+	mux.HandleFunc("/dhtcrawler/display", imp.SharesByID)
+	mux.HandleFunc("/dhtcrawler/displayall", imp.SharesAll)
+	mux.HandleFunc("/dhtcrawler/displaypage", imp.SharesPage)
+
+	prefixMux := http.NewServeMux()
+	prefixMux.Handle("/api/v1/", http.StripPrefix("/api/v1", mux))
+
+	//static
+	static := http.FileServer(http.Dir("assets/public/"))
+	prefixMux.Handle("/", static)
+
+	return prefixMux
+}
+::::::::::::::
+storage/csvimport/csvimport.go
+::::::::::::::
+package csvimport
+
+import (
+	"encoding/base64"
+	"encoding/csv"
+	"encoding/hex"
+	"io"
+	"os"
+	"path/filepath"
+)
+
+//DHTCrawler describes needed struct that can process read infohash
+type DHTCrawler interface {
+	AddIH(ih string)
+}
+
+//ImportCSV writes to dhtc storage parsed infohashes
+//that will be handled
+func ImportCSV(dirName string, dhtc DHTCrawler) error {
+	dirFile, err := os.Open(dirName)
+	if err != nil {
+		return err
+	}
+	files, err := dirFile.ReadDir(0)
+	if err != nil {
+		return err
+	}
+	fp, err := filepath.Abs(dirName)
+	for _, v := range files {
+		f, err := os.Open(filepath.Join(fp, v.Name()))
+		if err != nil {
+			return err
+		}
+
+		reader := csv.NewReader(f)
+		reader.Comma = ';'
+		reader.Comment = '#'
+		for {
+			record, err := reader.Read()
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				return err
+			}
+			decoded, err := base64.StdEncoding.DecodeString(record[1]) //second element is info_hash
+			if err != nil {
+				return err
+			}
+			encodedString := hex.EncodeToString(decoded)
+			//fmt.Println(encodedString)
+			dhtc.AddIH(encodedString)
+		}
+	}
+	return nil
+
+}
+::::::::::::::
+storage/postgresql/postgresql.go
+::::::::::::::
+package postgresql
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+
+	"github.com/KekemonBS/dhtcrawler/crawler/models"
+)
+
+//DbImpl stores db connection pointer and additional info to work with db
+type DbImpl struct {
+	storage *sql.DB
+}
+
+//New creates db instance
+func New(db *sql.DB) *DbImpl {
+	return &DbImpl{
+		storage: db,
+	}
+}
+
+//Create adpends one row to shares table
+func (db DbImpl) Create(ctx context.Context, share models.Share) error {
+	query := `INSERT INTO shares (name, shareSize, fileTree, magnetLink) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;`
+	res, err := db.storage.ExecContext(ctx, query,
+		share.Name,
+		share.Size,
+		share.FileTree,
+		share.MagnetLink,
+	)
+	if err != nil {
+		return fmt.Errorf("store error: %w", err)
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("create rows affected: %w", err)
+	}
+	return nil
+}
+
+//DeleteByID deletes one row from shares table
+func (db DbImpl) DeleteByID(ctx context.Context, uuid string) error {
+	query := `DELETE FROM shares WHERE where id = $1;`
+	res, err := db.storage.ExecContext(ctx, query,
+		uuid,
+	)
+	if err != nil {
+		return fmt.Errorf("store error: %w", err)
+	}
+
+	_, err = res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete rows affected: %w", err)
+	}
+	return nil
+}
+
+//ReadByID reads one row from shares table
+func (db DbImpl) ReadByID(ctx context.Context, uuid string) (models.Share, error) {
+	query := `SELECT name, shareSize, fileTree, magnetLink FROM shares WHERE id = $1;`
+	res, err := db.storage.QueryContext(ctx, query,
+		uuid,
+	)
+	defer res.Close()
+	resShare := models.Share{}
+	ok := res.Next()
+	if !ok {
+		return models.Share{}, fmt.Errorf("no matching rows left")
+	}
+	err = res.Scan(&resShare.Name,
+		&resShare.Size,
+		&resShare.FileTree,
+		&resShare.MagnetLink)
+	if err != nil {
+		return models.Share{}, fmt.Errorf("read error: %w", err)
+	}
+	return resShare, nil
+}
+
+//ReadAll reads all entries from shares table
+func (db DbImpl) ReadAll(ctx context.Context) ([]models.Share, error) {
+	query := `SELECT name, shareSize, fileTree, magnetLink FROM shares`
+	res, err := db.storage.QueryContext(ctx, query)
+	if err != nil {
+		return []models.Share{}, fmt.Errorf("query error: %w", err)
+	}
+	defer res.Close()
+	resShares := []models.Share{}
+	for res.Next() {
+		resShare := models.Share{}
+		err = res.Scan(&resShare.Name,
+			&resShare.Size,
+			&resShare.FileTree,
+			&resShare.MagnetLink)
+		resShares = append(resShares, resShare)
+		if err != nil {
+			return []models.Share{}, fmt.Errorf("read error: %w", err)
+		}
+	}
+	return resShares, nil
+}
+
+//ReadPage reads page from shares table nth page with defined size
+func (db DbImpl) ReadPage(ctx context.Context, size, n int, queryShares string) (models.SharesPage, error) {
+	//Read page
+	offset := size * (n - 1)
+	queryShares = "%" + queryShares + "%"
+	query := `SELECT name, shareSize, fileTree, magnetLink FROM shares WHERE name LIKE $3 LIMIT $1 OFFSET $2;`
+	res, err := db.storage.QueryContext(ctx, query, size, offset, queryShares)
+	if err != nil {
+		return models.SharesPage{}, fmt.Errorf("query error: %w", err)
+	}
+	defer res.Close()
+	resShares := []models.Share{}
+	for res.Next() {
+		resShare := models.Share{}
+		err = res.Scan(&resShare.Name,
+			&resShare.Size,
+			&resShare.FileTree,
+			&resShare.MagnetLink)
+		if err != nil {
+			return models.SharesPage{}, fmt.Errorf("read error: %w", err)
+		}
+		resShares = append(resShares, resShare)
+	}
+
+	//Count total res
+	countQuery := `SELECT COUNT(name) FROM shares WHERE name LIKE $1;`
+	resCount, err := db.storage.QueryContext(ctx, countQuery, queryShares)
+	if err != nil {
+		return models.SharesPage{}, fmt.Errorf("countQuery error: %w", err)
+	}
+	defer resCount.Close()
+	var count int
+	resCount.Next()
+	err = resCount.Scan(&count)
+	if err != nil {
+		return models.SharesPage{}, fmt.Errorf("countQuery error: %w", err)
+	}
+
+	resPage := models.SharesPage{
+		Total:   count,
+		Results: resShares,
+	}
+
+	return resPage, nil
+}

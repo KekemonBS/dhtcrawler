@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -58,7 +59,14 @@ func main() {
 	}
 
 	//Init handlers
-	handlers, err := crawler.New(context.Background(), logger, dbImpl, cfg.Threads)
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, os.Interrupt)
+		logger.Printf("got signal: %v", <-ch)
+		cancel()
+	}()
+	handlers, err := crawler.New(ctx, logger, dbImpl, cfg)
 	if err != nil {
 		logger.Fatal(err)
 	}
@@ -71,9 +79,17 @@ func main() {
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
-
-	err = s.ListenAndServe()
-	if err != nil {
-		logger.Fatal(err)
+	go func() {
+		err = s.ListenAndServe()
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			s.Close()
+			return
+		}
 	}
 }
