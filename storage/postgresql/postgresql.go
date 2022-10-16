@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/KekemonBS/dhtcrawler/crawler/models"
 )
@@ -23,9 +22,8 @@ func New(db *sql.DB) *DbImpl {
 
 //Create adpends one row to shares table
 func (db DbImpl) Create(ctx context.Context, share models.Share) error {
-	query := `INSERT INTO shares (name, shareSize, fileTree, magnetLink) VALUES ($1, $2, $3);`
+	query := `INSERT INTO shares (name, shareSize, fileTree, magnetLink) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING;`
 	res, err := db.storage.ExecContext(ctx, query,
-		time.Now(),
 		share.Name,
 		share.Size,
 		share.FileTree,
@@ -105,12 +103,14 @@ func (db DbImpl) ReadAll(ctx context.Context) ([]models.Share, error) {
 }
 
 //ReadPage reads page from shares table nth page with defined size
-func (db DbImpl) ReadPage(ctx context.Context, size, n int) ([]models.Share, error) {
+func (db DbImpl) ReadPage(ctx context.Context, size, n int, queryShares string) (models.SharesPage, error) {
+	//Read page
 	offset := size * (n - 1)
-	query := `SELECT name, shareSize, fileTree, magnetLink FROM shares LIMIT $1 OFFSET $2;`
-	res, err := db.storage.QueryContext(ctx, query, size, offset)
+	queryShares = "%" + queryShares + "%"
+	query := `SELECT name, shareSize, fileTree, magnetLink FROM shares WHERE name LIKE $3 LIMIT $1 OFFSET $2;`
+	res, err := db.storage.QueryContext(ctx, query, size, offset, queryShares)
 	if err != nil {
-		return []models.Share{}, fmt.Errorf("query error: %w", err)
+		return models.SharesPage{}, fmt.Errorf("query error: %w", err)
 	}
 	defer res.Close()
 	resShares := []models.Share{}
@@ -120,10 +120,30 @@ func (db DbImpl) ReadPage(ctx context.Context, size, n int) ([]models.Share, err
 			&resShare.Size,
 			&resShare.FileTree,
 			&resShare.MagnetLink)
-		resShares = append(resShares, resShare)
 		if err != nil {
-			return []models.Share{}, fmt.Errorf("read error: %w", err)
+			return models.SharesPage{}, fmt.Errorf("read error: %w", err)
 		}
+		resShares = append(resShares, resShare)
 	}
-	return resShares, nil
+
+	//Count total res
+	countQuery := `SELECT COUNT(name) FROM shares WHERE name LIKE $1;`
+	resCount, err := db.storage.QueryContext(ctx, countQuery, queryShares)
+	if err != nil {
+		return models.SharesPage{}, fmt.Errorf("countQuery error: %w", err)
+	}
+	defer resCount.Close()
+	var count int
+	resCount.Next()
+	err = resCount.Scan(&count)
+	if err != nil {
+		return models.SharesPage{}, fmt.Errorf("countQuery error: %w", err)
+	}
+
+	resPage := models.SharesPage{
+		Total:   count,
+		Results: resShares,
+	}
+
+	return resPage, nil
 }

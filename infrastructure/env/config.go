@@ -3,14 +3,13 @@ package env
 import (
 	"fmt"
 	"os"
-	"strconv"
 )
 
 //Config struct holds data parsed from environment
 type Config struct {
 	//Add some field if i need to
 	PostgresURI string
-	Threads     int
+	ImportCSV   bool
 }
 
 //NewConfig parses env to struct
@@ -21,17 +20,20 @@ func NewConfig() (*Config, error) {
 		return nil, fmt.Errorf("no POSTGRESURI env variable")
 	}
 
-	threads, ok := os.LookupEnv("THREADS")
+	//[YES/NO]
+	importCSVAns, ok := os.LookupEnv("IMPORTCSV")
 	if !ok {
-		return nil, fmt.Errorf("no THREADS env variable")
+		return nil, fmt.Errorf("no IMPORTCSV env variable")
 	}
-	threadsInt, err := strconv.ParseInt(threads, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("wrong THREADS variable format")
+	var importCSV bool
+	if importCSVAns == "YES" {
+		importCSV = true
+	} else {
+		importCSV = false
 	}
 
 	return &Config{
 		PostgresURI: postgresURI,
-		Threads:     int(threadsInt),
+		ImportCSV:   importCSV,
 	}, nil
 }

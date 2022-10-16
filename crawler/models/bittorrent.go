@@ -1,10 +1,5 @@
 package models
 
-type file struct {
-	Path   []interface{}
-	Length int
-}
-
 //Share stores data detected bittorrent share
 type Share struct {
 	Name       string
@@ -13,9 +8,8 @@ type Share struct {
 	MagnetLink string
 }
 
-//type Share struct {
-//	InfoHash string
-//	Name     string
-//	Files    []file
-//	Length   int
-//}
+//SharesPage stores resulting page of Shares
+type SharesPage struct {
+	Total   int
+	Results []Share
+}
